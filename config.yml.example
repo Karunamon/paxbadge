@@ -1,0 +1,8 @@
+:twitter:
+  :api_key: 
+  :api_secret: 
+  :access_token: 
+  :access_secret: 
+:pushover:
+  :app_key: 
+  :user_key: 
