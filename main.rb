@@ -1,7 +1,6 @@
 ##
 puts 'Requirements setup..'
 require 'twitter'
-require 'pry'
 require 'yaml'
 require 'pushover'
 
@@ -9,9 +8,9 @@ conffile = File.read('./config.yml')
 config = YAML.load(conffile)
 $twitter_config = config[:twitter]
 $pushover_config = config[:pushover]
+$app_config = config[:app]
 
-
-monitor_rex = /.+?[B|b]adge[s].+?/
+monitor_rex = /.+?[B|b]adge(s|).+?$/
 frequency = 120 #Number of times per hour to check. 120 = check every 30 seconds.
 
 
@@ -32,29 +31,36 @@ Pushover.configure do |config|
 end
 
 def send_notification!(text)
-  Pushover.notification(message: text, title: 'PAX Badge Warning System ALERT', priority: 'emergency', sound: 'Alien Alarm')
+  Pushover.notification(
+    message: text,
+    title: 'PAX Badge Warning System ALERT',
+    priority: 'emergency',
+    sound: 'Alien Alarm',
+    expire: $app_config[:notify_expire],
+    retry: $app_config[:notify_retry]
+  )
 end
 
 def send_notification(text)
   Pushover.notification(message: text, title: 'Pax Badge Warning System')
 end
 
-
-send_notification("Badge monitor started at #{Time.now.to_s}")
+send_notification("Badge monitor started at #{Time.now.to_s}") if $app_config[:notify_on_start]
 
 #Monitor loop
 $id = 0
-puts 'Entering monitor loop!'
+puts 'Entering monitor loop!' if $app_config[:verbose]
+puts 'Monitor armed! You can leave me running in the background now.'
 
 loop do
   tw_result = tw_client.user_timeline('Official_PAX')[0]
   tw_match = tw_result.text.match(monitor_rex)
   if tw_match.nil? #Didn't match. Move on.
-      puts 'No match yet. Content: ' + tw_result.text
+      puts 'No match yet. Content: ' + tw_result.text if $app_config[:verbose]
       sleep 30
       next
   elsif tw_result.id == $id #It matched, but we got that tweet already. Move on.
-     puts 'Old matching tweet, not notifying. Content: ' + tw_result.text
+     puts 'Old matching tweet, not notifying. Content: ' + tw_result.text if $app_config[:verbose]
      sleep 30
      next
   else
